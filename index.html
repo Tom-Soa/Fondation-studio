@@ -170,7 +170,6 @@
 
   /* Portfolio */
   .portfolio-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 2rem; }
-  .port-item { }
   .port-img { position: relative; border-radius: 14px; overflow: hidden; aspect-ratio: 4/3; margin-bottom: 1.2rem; background: var(--grid); }
   .port-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
   .port-item:hover .port-img img { transform: scale(1.05); }
@@ -500,15 +499,42 @@
             <li>6 mois de maintenance inclus</li>
           </ul>
         </div>
-        <div class="form-stack">
+
+        <!-- ══ FORMSPREE FORM ══ -->
+        <form
+          id="contact-form"
+          action="https://formspree.io/f/xlgplnbl"
+          method="POST"
+          class="form-stack"
+          onsubmit="handleSubmit(event)"
+        >
           <div class="form-row">
-            <div class="form-grp"><label>Nom *</label><input type="text" id="f-name" placeholder="Jean Dupont" /></div>
-            <div class="form-grp"><label>Email *</label><input type="email" id="f-email" placeholder="jean@entreprise.fr" /></div>
+            <div class="form-grp">
+              <label for="f-name">Nom *</label>
+              <input type="text" id="f-name" name="name" placeholder="Jean Dupont" required />
+            </div>
+            <div class="form-grp">
+              <label for="f-email">Email *</label>
+              <input type="email" id="f-email" name="email" placeholder="jean@entreprise.fr" required />
+            </div>
           </div>
-          <div class="form-grp"><label>Téléphone</label><input type="tel" id="f-phone" placeholder="06 00 00 00 00" /></div>
-          <div class="form-grp"><label>Votre projet *</label><textarea id="f-message" placeholder="Décrivez votre activité, vos objectifs, des références visuelles éventuelles…"></textarea></div>
-          <button class="cta-btn full lg" id="submit-btn" onclick="handleSubmit()">Envoyer ma demande <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
-        </div>
+          <div class="form-grp">
+            <label for="f-phone">Téléphone</label>
+            <input type="tel" id="f-phone" name="phone" placeholder="06 00 00 00 00" />
+          </div>
+          <div class="form-grp">
+            <label for="f-message">Votre projet *</label>
+            <textarea id="f-message" name="message" placeholder="Décrivez votre activité, vos objectifs, des références visuelles éventuelles…" required></textarea>
+          </div>
+          <!-- Honeypot anti-spam Formspree -->
+          <input type="text" name="_gotcha" style="display:none" />
+          <button type="submit" class="cta-btn full lg" id="submit-btn">
+            Envoyer ma demande
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </form>
+        <!-- ══ FIN FORMSPREE ══ -->
+
       </div>
     </div>
   </div>
@@ -570,22 +596,40 @@
     setTimeout(() => t.classList.remove('show'), 4500);
   }
 
-  // Form
-  function handleSubmit() {
-    const name = document.getElementById('f-name').value.trim();
-    const email = document.getElementById('f-email').value.trim();
-    const msg = document.getElementById('f-message').value.trim();
-    if (!name || !email || !msg) { showToast('Veuillez remplir les champs obligatoires.', false); return; }
+  // ══ FORMSPREE HANDLER ══
+  async function handleSubmit(e) {
+    e.preventDefault();
     const btn = document.getElementById('submit-btn');
+    const form = document.getElementById('contact-form');
+
+    // Loading state
     btn.disabled = true;
     btn.innerHTML = '<svg class="spin" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Envoi en cours…';
-    setTimeout(() => {
-      ['f-name','f-email','f-phone','f-message'].forEach(id => document.getElementById(id).value = '');
+
+    try {
+      const data = new FormData(form);
+      const response = await fetch('https://formspree.io/f/xlgplnbl', {
+        method: 'POST',
+        body: data,
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (response.ok) {
+        form.reset();
+        showToast('Message envoyé ! Je vous réponds sous 24h avec un contrat.', true);
+      } else {
+        const json = await response.json();
+        const errMsg = json.errors ? json.errors.map(e => e.message).join(', ') : 'Une erreur est survenue.';
+        showToast('Erreur : ' + errMsg, false);
+      }
+    } catch (err) {
+      showToast('Erreur réseau. Veuillez réessayer.', false);
+    } finally {
       btn.disabled = false;
       btn.innerHTML = 'Envoyer ma demande <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
-      showToast('Message envoyé ! Je vous réponds sous 24h avec un contrat.');
-    }, 1500);
+    }
   }
+  // ══ FIN FORMSPREE ══
 </script>
 </body>
 </html>
